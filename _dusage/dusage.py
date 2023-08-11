@@ -59,17 +59,7 @@ def shell_command(command):
     return output
 
 
-def replace_variables(path, project=None, user=None, filesystem=None):
-    if project:
-        path = path.replace('{project}', project)
-    if user:
-        path = path.replace('{user}', user)
-    if filesystem:
-        path = path.replace('{filesystem}', filesystem)
-    return path
-
-
-def read_config(config_file='config.ini')
+def read_config(config_file='config.ini'):
     config = configparser.ConfigParser()
     config.read(config_file)
 
@@ -77,8 +67,11 @@ def read_config(config_file='config.ini')
     filesystem = config.get('Global', 'filesystem').lower()
 
     # Accessing folder configuration values
-    folders = config.items('QuotaFolders')
-    folders = {f: config.getboolean('QuotaFolders', f) for f, _ in folders}
+    folders = {}
+    for folder, settings in config.items('QuotaFolders'):
+        backup, flag, account = settings.split(",")
+        backup = backup.lower() == "True"
+        folders[folder] = backup, flag, account
     return filesystem, folders
 
 
@@ -356,41 +349,60 @@ def main(user, project, csv, no_colors):
     headers_blue = [colorize(h, "blue") for h in headers]
     table = []
 
-    if not skip_user_rows:
+    for folder, settings in folders:
+        if skip_user_rows and "{user}" in folder:
+        # Skip user rows
+            continue
+        if project: # If dusage is called with project, skip user rows
+            continue
+
+        backup, flag, account = settings
         row = create_row(
             run_command_and_extract,
-            "u",
-            f"{user}",
-            "/cluster",
+            flag,
+            f"{account}",
+            folder,
             csv,
             show_soft_limits,
         )
         if row_worth_showing(row):
             table.append(row)
 
-    if project is None:
-        row = create_row(
-            run_command_and_extract,
-            "g",
-            f"{user}_g",
-            f"/cluster/home/{user}",
-            csv,
-            show_soft_limits,
-        )
-        if row_worth_showing(row):
-            table.append(row)
+    # if not skip_user_rows:
+    #     row = create_row(
+    #         run_command_and_extract,
+    #         "u",
+    #         f"{user}",
+    #         "/cluster",
+    #         csv,
+    #         show_soft_limits,
+    #     )
+    #     if row_worth_showing(row):
+    #         table.append(row)
 
-    if not skip_user_rows:
-        row = create_row(
-            run_command_and_extract,
-            "g",
-            user,
-            f"/cluster/work/users/{user}",
-            csv,
-            show_soft_limits,
-        )
-        if row_worth_showing(row):
-            table.append(row)
+    # if project is None:
+    #     row = create_row(
+    #         run_command_and_extract,
+    #         "g",
+    #         f"{user}_g",
+    #         f"/cluster/home/{user}",
+    #         csv,
+    #         show_soft_limits,
+    #     )
+    #     if row_worth_showing(row):
+    #         table.append(row)
+
+    # if not skip_user_rows:
+    #     row = create_row(
+    #         run_command_and_extract,
+    #         "g",
+    #         user,
+    #         f"/cluster/work/users/{user}",
+    #         csv,
+    #         show_soft_limits,
+    #     )
+    #     if row_worth_showing(row):
+    #         table.append(row)
 
     if project is None:
         groups = collect_groups(user)
