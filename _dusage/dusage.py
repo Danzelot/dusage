@@ -8,6 +8,7 @@ Inspired by dusage (written by Lorand Szentannai).
 import subprocess
 from shutil import which
 import colorful as cf
+import configparser
 from tabulate import tabulate
 import re
 import click
@@ -56,6 +57,29 @@ def shell_command(command):
     except subprocess.CalledProcessError as e:
         sys.exit(colorize("ERROR: ", "red") + e.output.decode("utf-8"))
     return output
+
+
+def replace_variables(path, project=None, user=None, filesystem=None):
+    if project:
+        path = path.replace('{project}', project)
+    if user:
+        path = path.replace('{user}', user)
+    if filesystem:
+        path = path.replace('{filesystem}', filesystem)
+    return path
+
+
+def read_config(config_file='config.ini')
+    config = configparser.ConfigParser()
+    config.read(config_file)
+
+    # Accessing global configuration
+    filesystem = config.get('Global', 'filesystem').lower()
+
+    # Accessing folder configuration values
+    folders = config.items('QuotaFolders')
+    folders = {f: config.getboolean('QuotaFolders', f) for f, _ in folders}
+    return filesystem, folders
 
 
 def anonymize_output(table, user, groups):
@@ -269,6 +293,8 @@ def main(user, project, csv, no_colors):
     cf.update_palette({"blue": "#2e54ff"})
     cf.update_palette({"green": "#08a91e"})
     cf.update_palette({"orange": "#ff5733"})
+
+    filesystem, folders = read_config()
 
     if no_colors:
         # redefine the colorize function to do nothing
